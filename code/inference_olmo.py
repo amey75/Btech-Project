@@ -74,6 +74,7 @@ def main():
     model.to(device)
     
     tokenizer = AutoTokenizer.from_pretrained(peft_model_id)
+    tokenizer.padding_side = "left"  # decoder-only batched generation needs left padding
     data=load_raw_data(args.target_dataset_name)
     data = data.map(partial(prompt_formats, validate_mode=True))
 
