@@ -1,0 +1,9 @@
+# Live demo (faithfulness/demo.py) and the analysis scripts, on a laptop CPU.
+torch
+transformers
+sentencepiece
+nltk            # optional: more contradiction substitutes via WordNet
+numpy
+scipy
+matplotlib
+openpyxl

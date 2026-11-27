@@ -164,3 +164,6 @@ faithfulness/data/
 faithfulness/results/*_DRYRUN/
 model/
 result/
+
+# demo: local model checkpoints (about 3 GB each, never commit)
+checkpoints/

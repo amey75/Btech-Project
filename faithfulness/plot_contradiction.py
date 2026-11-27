@@ -73,6 +73,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--results", default="btp_results")
     ap.add_argument("--out", default="btp_results/figures")
+    ap.add_argument("--print", dest="print_layout", action="store_true",
+                    help="page-width layout with stacked panels (writes fig09_contradiction_print.*)")
     a = ap.parse_args()
     rng = np.random.default_rng(0)
     data, summ = {}, {}
@@ -81,7 +83,12 @@ def main():
         with open(os.path.join(a.results, run, "summary.json")) as f:
             summ[run] = json.load(f)["counterfactual_correctness"]
 
-    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15.5, 4.9), gridspec_kw={"width_ratios": [1.15, 1.15, 0.8]})
+    if a.print_layout:
+        fig = plt.figure(figsize=(7.2, 11.2))
+        gs = fig.add_gridspec(3, 2, height_ratios=[1, 1, 0.95], width_ratios=[1, 0.9], hspace=0.62)
+        ax1, ax2, ax3 = fig.add_subplot(gs[0, :]), fig.add_subplot(gs[1, :]), fig.add_subplot(gs[2, 0])
+    else:
+        fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15.5, 4.9), gridspec_kw={"width_ratios": [1.15, 1.15, 0.8]})
     xs = np.arange(len(MODELS))
     w = 0.26
 
@@ -133,31 +140,42 @@ def main():
         for op, _, c in OPS:
             fs = [f for o, f in sub if o == op]
             share = len(fs) / len(sub)
-            ax3.bar(xi, share, bottom=bottom, width=0.62, color=c, edgecolor=SURFACE, linewidth=2)
+            ax3.bar(xi, share, bottom=bottom, width=0.72, color=c, edgecolor=SURFACE, linewidth=2)
             if share > 0.06:
-                ax3.text(xi, bottom + share / 2, f"{share:.0%} of edits\nfollowed {np.mean(fs):.0%}",
-                         ha="center", va="center", fontsize=7.5, color="#ffffff" if c == SLOT[0] else "#0b0b0b")
+                # small segments get a short one-line label so neighbouring labels never overlap
+                t = (f"{share:.0%} of edits\nfollowed {np.mean(fs):.0%}" if share > 0.15
+                     else f"{share:.0%} · followed {np.mean(fs):.0%}")
+                ax3.text(xi, bottom + share / 2, t,
+                         ha="center", va="center", fontsize=7.5 if share > 0.15 else 7,
+                         color="#ffffff" if c == SLOT[0] else "#0b0b0b")
             bottom += share
     ax3.set_xticks([0, 1], ["cited edits", "control edits"])
     ax3.set_ylim(0, 1)
     ax3.set_ylabel("share of edits (4 models pooled)")
     style(ax3)
-    ax3.legend(handles=[Patch(color=c, label=l) for _, l, c in OPS], loc="upper center",
-               bbox_to_anchor=(0.5, -0.09), ncol=1, fontsize=8, frameon=False)
+    if a.print_layout:
+        ax3.legend(handles=[Patch(color=c, label=l) for _, l, c in OPS], loc="center left",
+                   bbox_to_anchor=(1.04, 0.5), ncol=1, fontsize=8, frameon=False)
+    else:
+        ax3.legend(handles=[Patch(color=c, label=l) for _, l, c in OPS], loc="upper center",
+                   bbox_to_anchor=(0.5, -0.09), ncol=1, fontsize=8, frameon=False)
     ax3.set_title("C. Why the raw gap misleads", loc="left", fontsize=10.5)
 
-    fig.text(0.01, -0.12, "Premise side, full e-SNLI test set. Only edits the NLI oracle (DeBERTa-v3-large) labels with "
+    if not a.print_layout:
+      fig.text(0.01, -0.12, "Premise side, full e-SNLI test set. Only edits the NLI oracle (DeBERTa-v3-large) labels with "
              f"p ≥ {MIN_CONF} and that should change the model's label. 95% bootstrap CIs.\n"
              "Cited edits are mostly swap_shared, which models follow whichever word is edited; "
              "comparing within edit type removes most of the gap.", fontsize=7.5, color=MUTED)
-    fig.tight_layout(w_pad=2.5)
+    if not a.print_layout:
+        fig.tight_layout(w_pad=2.5)
+    name = "fig09_contradiction_print" if a.print_layout else "fig09_contradiction"
     os.makedirs(a.out, exist_ok=True)
     for ext in ("png", "pdf"):
-        fig.savefig(os.path.join(a.out, f"fig09_contradiction.{ext}"), dpi=200, bbox_inches="tight")
+        fig.savefig(os.path.join(a.out, f"{name}.{ext}"), dpi=200, bbox_inches="tight")
     for run, n in MODELS:
         print(f"{n:13s} raw {rows[run][0][0]:+.3f}  same-type {rows[run][1][0]:+.3f}  swap-only {rows[run][2][0]:+.3f}"
               f"  [{rows[run][2][1]:+.2f},{rows[run][2][2]:+.2f}]")
-    print("wrote", os.path.join(a.out, "fig09_contradiction.png"))
+    print("wrote", os.path.join(a.out, f"{name}.png"))
 
 
 if __name__ == "__main__":

@@ -39,7 +39,7 @@ FAILS = ["fail_stance_disagrees", "fail_removal_insensitive", "fail_isolation_lo
 NOT_PLAUSIBLE = "#d5d4cd"  # recessive grey: the "rest" category, not a series
 
 
-def panel_rq2(ax, rq2):
+def panel_rq2(ax, rq2, title="A. RQ2: human quality tracks coherence, not dependence on evidence"):
     rows = []
     for key, label, kind in MEASURES:
         r = rq2[key]
@@ -64,7 +64,7 @@ def panel_rq2(ax, rq2):
     ax.legend(handles=[Patch(color=SLOT[0], label="read off the (original or regenerated) explanation"),
                        Patch(color=SLOT[1], label="from the prediction after editing the input")],
               loc="upper center", bbox_to_anchor=(0.5, -0.13), ncol=2, fontsize=8, frameon=False)
-    ax.set_title("A. RQ2: human quality tracks coherence, not dependence on evidence", loc="left", fontsize=10.5)
+    ax.set_title(title, loc="left", fontsize=10.5)
 
 
 def panel_rq3(ax, merged):
@@ -102,24 +102,35 @@ def panel_rq3(ax, merged):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dir", default="btp_results/human_rating")
+    ap.add_argument("--print", dest="print_layout", action="store_true",
+                    help="page-width layout with stacked panels (writes fig08_rq2_rq3_print.*)")
     a = ap.parse_args()
     with open(os.path.join(a.dir, "rating_analysis.json")) as f:
         rep = json.load(f)
     with open(os.path.join(a.dir, "ratings_merged.csv")) as f:
         merged = list(csv.DictReader(f))
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 4.8), gridspec_kw={"width_ratios": [1.45, 1]})
-    panel_rq2(ax1, rep["rq2"]["pooled"])
+    if a.print_layout:
+        # explicit positions: panel A needs room on the left for its long labels, panel B does not
+        fig = plt.figure(figsize=(7.2, 10.2))
+        ax1 = fig.add_axes([0.40, 0.56, 0.57, 0.40])
+        ax2 = fig.add_axes([0.10, 0.07, 0.87, 0.36])
+    else:
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 4.8), gridspec_kw={"width_ratios": [1.45, 1]})
+    panel_rq2(ax1, rep["rq2"]["pooled"], *(["A. RQ2: human quality vs faithfulness"] if a.print_layout else []))
     panel_rq3(ax2, merged)
-    fig.text(0.01, -0.07, "200 explanations, 50 per model, each rated by 3 people (Krippendorff α = "
+    if not a.print_layout:
+      fig.text(0.01, -0.07, "200 explanations, 50 per model, each rated by 3 people (Krippendorff α = "
              f"{rep['agreement']['alpha_ordinal']:.2f}, ordinal). Quality = mean score (Yes 1 … No 0); plausible = quality ≥ 2/3. "
              "Removal/isolation tests apply to entailment and contradiction predictions only.",
              fontsize=7.5, color=MUTED)
-    fig.tight_layout(w_pad=3)
+    if not a.print_layout:
+        fig.tight_layout(w_pad=3)
+    name = "fig08_rq2_rq3_print" if a.print_layout else "fig08_rq2_rq3"
     out = os.path.join(a.dir, "figures")
     os.makedirs(out, exist_ok=True)
     for ext in ("png", "pdf"):
-        fig.savefig(os.path.join(out, f"fig08_rq2_rq3.{ext}"), dpi=200, bbox_inches="tight")
-    print("wrote", os.path.join(out, "fig08_rq2_rq3.png"))
+        fig.savefig(os.path.join(out, f"{name}.{ext}"), dpi=200, bbox_inches="tight")
+    print("wrote", os.path.join(out, f"{name}.png"))
 
 
 if __name__ == "__main__":
